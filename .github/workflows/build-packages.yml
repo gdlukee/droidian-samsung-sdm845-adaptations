@@ -1,37 +1,43 @@
-name: Build adaptation packages
+name: Build Adaptation Packages
 
 on:
   push:
-    branches: [ main, trixie ]
-  workflow_dispatch:
+    branches: [ "main", "trixie" ]
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        device:
+          - crownqltechn
+          - starqltechn
+          - star2qltechn
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install tools
+      - name: Install build tools
         run: |
-          sudo apt update
-          sudo apt install -y dpkg-dev gnupg
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev devscripts build-essential fakeroot
 
-      - name: Build all packages
+      - name: Build package (${{ matrix.device }})
         run: |
-          mkdir -p out
+          cd adaptation-samsung-${{ matrix.device }}
 
-          for dir in packages/*; do
-            if [ -d "$dir" ]; then
-              echo "Building $dir"
+          dpkg-buildpackage -us -uc -b
 
-              dpkg-deb -b "$dir" "out/$(basename "$dir").deb"
-            fi
-          done
+      - name: Collect artifacts
+        run: |
+          mkdir -p packages/${{ matrix.device }}
+          mv ../*.deb packages/${{ matrix.device }}/ || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: deb-packages
-          path: out/
+          name: debian-packages-${{ matrix.device }}
+          path: packages/${{ matrix.device }}/

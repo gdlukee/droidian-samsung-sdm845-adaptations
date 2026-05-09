@@ -1,51 +1,49 @@
-name: Publish APT repo
+name: Publish APT Repository
 
 on:
   workflow_run:
-    workflows: ["Build adaptation packages"]
+    workflows: ["Build Adaptation Packages"]
     types:
       - completed
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: deb-packages
+          path: packages
+
+      - name: Checkout repo repo
+        uses: actions/checkout@v4
+        with:
+          repository: gdlukee/droidian-samsung_sdm845-repo
+          token: ${{ secrets.GH_TOKEN }}
           path: repo
 
-      - name: Install tools
+      - name: Copy packages
         run: |
-          sudo apt update
-          sudo apt install -y dpkg-dev gnupg apt-utils
+          mkdir -p repo/packages
+          cp -r packages/* repo/packages/
 
-      - name: Import GPG key
+      - name: Generate Packages index
         run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          cd repo/packages
 
-      - name: Create repo structure
-        run: |
-          mkdir -p repo/conf
+          for d in */; do
+            dpkg-scanpackages "$d" /dev/null > "$d/Packages"
+            gzip -kf "$d/Packages"
+          done
 
-          cd repo
-          dpkg-scanpackages . /dev/null > Packages
-          gzip -k -f Packages
-
-      - name: Sign repo
+      - name: Commit & push
         run: |
           cd repo
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-          gpg --default-key "${{ secrets.GPG_KEY_ID }}" \
-              --batch --yes \
-              --detach-sign \
-              --armor \
-              Packages
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: repo
+          git add .
+          git commit -m "Update packages" || true
+          git push
