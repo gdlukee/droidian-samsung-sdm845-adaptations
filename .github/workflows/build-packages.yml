@@ -1,9 +1,8 @@
-name: Build Adaptation Packages
+name: Build and Publish Packages
 
 on:
   push:
     branches: [ "main", "trixie" ]
-  pull_request:
 
 jobs:
   build:
@@ -17,27 +16,66 @@ jobs:
           - star2qltechn
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y dpkg-dev devscripts build-essential fakeroot
 
-      - name: Build package (${{ matrix.device }})
+      - name: Build package
         run: |
           cd adaptation-samsung-${{ matrix.device }}
-
           dpkg-buildpackage -us -uc -b
 
-      - name: Collect artifacts
+      - name: Collect .deb
         run: |
           mkdir -p packages/${{ matrix.device }}
           mv ../*.deb packages/${{ matrix.device }}/ || true
 
-      - name: Upload artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: debian-packages-${{ matrix.device }}
+          name: ${{ matrix.device }}
           path: packages/${{ matrix.device }}/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+
+      - name: Checkout repo repo
+        uses: actions/checkout@v4
+        with:
+          repository: gdlukee/droidian-samsung_sdm845-repo
+          token: ${{ secrets.GH_TOKEN }}
+          path: repo
+
+      - name: Copy packages
+        run: |
+          mkdir -p repo/packages
+          cp -r packages/* repo/packages/
+
+      - name: Generate repo index
+        run: |
+          cd repo/packages
+
+          for d in */; do
+            dpkg-scanpackages "$d" /dev/null > "$d/Packages"
+            gzip -kf "$d/Packages"
+          done
+
+      - name: Commit repo
+        run: |
+          cd repo
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add .
+          git commit -m "Update packages" || true
+          git push
