@@ -1,0 +1,51 @@
+name: Publish APT repo
+
+on:
+  workflow_run:
+    workflows: ["Build adaptation packages"]
+    types:
+      - completed
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-packages
+          path: repo
+
+      - name: Install tools
+        run: |
+          sudo apt update
+          sudo apt install -y dpkg-dev gnupg apt-utils
+
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+
+      - name: Create repo structure
+        run: |
+          mkdir -p repo/conf
+
+          cd repo
+          dpkg-scanpackages . /dev/null > Packages
+          gzip -k -f Packages
+
+      - name: Sign repo
+        run: |
+          cd repo
+
+          gpg --default-key "${{ secrets.GPG_KEY_ID }}" \
+              --batch --yes \
+              --detach-sign \
+              --armor \
+              Packages
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: repo
