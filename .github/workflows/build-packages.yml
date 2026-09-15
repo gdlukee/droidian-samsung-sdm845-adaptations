@@ -26,13 +26,20 @@ jobs:
       - name: Build package
         run: |
           cd adaptation-samsung-${{ matrix.device }}
+          echo "Current directory: $(pwd)"
+          echo "Directory contents before build:"
+          ls -la
           dpkg-buildpackage -us -uc -b
 
       - name: Collect .deb
         run: |
           mkdir -p packages/${{ matrix.device }}
+          echo "Looking for .deb files in parent directory:"
+          ls -la ../
+          find .. -maxdepth 1 -name "*.deb" -type f
           find .. -maxdepth 1 -name "*.deb" -exec mv {} packages/${{ matrix.device }}/ \;
-
+          echo "Collected packages:"
+          ls -la packages/${{ matrix.device }}/
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
