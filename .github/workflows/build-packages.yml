@@ -2,7 +2,7 @@ name: Build and Publish Packages
 
 on:
   push:
-    branches: [ "main", "trixie" ]
+    branches: [ "main", "trixie", "bookworm" ]
 
 jobs:
   build:
