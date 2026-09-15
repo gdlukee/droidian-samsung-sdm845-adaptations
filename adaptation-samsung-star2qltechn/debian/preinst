@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
+
 if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
-    dpkg-divert --add --package adaptation-star2qltechn-configs --rename \
+    # Force remove any existing diversion (in case of incomplete previous installations)
+    dpkg-divert --remove --package adaptation-star2qltechn-configs \
+        --divert /usr/bin/usb-tethering.hybris /usr/bin/usb-tethering 2>/dev/null || true
+    
+    # Register the diversion before unpacking files
+    dpkg-divert --add --package adaptation-star2qltechn-configs --force --rename \
         --divert /usr/bin/usb-tethering.hybris /usr/bin/usb-tethering
 fi
