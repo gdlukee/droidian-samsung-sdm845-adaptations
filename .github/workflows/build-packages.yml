@@ -40,9 +40,10 @@ jobs:
         run: |
           mkdir -p packages/${{ matrix.device }}
           echo "=== Looking for .deb files ==="
-          ls -la ../
-          find .. -maxdepth 1 -name "*.deb" -type f || echo "No .deb files found"
-          find .. -maxdepth 1 -name "*.deb" -exec mv {} packages/${{ matrix.device }}/ \;
+          ls -la
+          ls -la adaptation-samsung-${{ matrix.device }}/
+          find adaptation-samsung-${{ matrix.device }} -maxdepth 1 -name "*.deb" -type f || echo "No .deb files found"
+          find adaptation-samsung-${{ matrix.device }} -maxdepth 1 -name "*.deb" -exec mv {} packages/${{ matrix.device }}/ \;
           echo "=== Collected packages ==="
           ls -la packages/${{ matrix.device }}/ || echo "packages directory is empty"
           
