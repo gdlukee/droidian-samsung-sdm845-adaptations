@@ -59,7 +59,7 @@ jobs:
       - name: Copy packages
         run: |
           mkdir -p repo/packages
-          cp -r packages/* repo/packages/
+          find packages -name "*.deb" -exec cp {} repo/packages/ \;
 
       - name: Generate repo index
         run: |
